@@ -13,7 +13,7 @@ import java.util.Optional;
  */
 public interface HierarchicalTree<K, V> extends Iterable<HierarchicalTree.Node<K, V>> {
 	
-	public interface Node<K, V> extends Map.Entry<K, V> {}
+	interface Node<K, V> extends Map.Entry<K, V> {}
 	
 	int size();
 	

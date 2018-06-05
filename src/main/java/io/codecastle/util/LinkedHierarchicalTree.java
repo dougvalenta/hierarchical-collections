@@ -7,6 +7,7 @@ package io.codecastle.util;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -60,9 +61,24 @@ public class LinkedHierarchicalTree<K, V> implements HierarchicalTree<K, V> {
 
 		@Override
 		public V setValue(final V value) {
+			if (value == null) throw new IllegalArgumentException("Null value");
 			final V replaced = this.value;
 			this.value = value;
 			return replaced;
+		}
+		
+		@Override
+		public boolean equals(final Object other) {
+			if (!(other instanceof Map.Entry)) {
+				return false;
+			}
+			final Map.Entry<K, V> entry = (Map.Entry<K, V>) other;
+			return (key.equals(entry.getKey()) && value.equals(entry.getValue()));
+		}
+		
+		@Override
+		public int hashCode() {
+			return key.hashCode() ^ value.hashCode();
 		}
 		
 	}
@@ -160,6 +176,7 @@ public class LinkedHierarchicalTree<K, V> implements HierarchicalTree<K, V> {
 				}
 				current = null;
 			}
+			size--;
 		}
 		
 	}
@@ -195,6 +212,7 @@ public class LinkedHierarchicalTree<K, V> implements HierarchicalTree<K, V> {
 		if (value == null) throw new IllegalArgumentException("Null value");
 		if (root == null) {
 			root = new Node(key, value);
+			size++;
 			return Optional.empty();
 		}
 		if (root.key.equals(key)) {
@@ -214,6 +232,7 @@ public class LinkedHierarchicalTree<K, V> implements HierarchicalTree<K, V> {
 			if (root.next != null) {
 				root.next.reparent(root);
 			}
+			size++;
 			return Optional.empty();
 		}
 		return putNext(key, value, root);
@@ -222,6 +241,7 @@ public class LinkedHierarchicalTree<K, V> implements HierarchicalTree<K, V> {
 	private Optional<V> putChild(final K key, final V value, final Node node) {
 		if (node.child == null) {
 			node.child = new Node(key, value);
+			size++;
 			return Optional.empty();
 		}
 		if (node.child.key.equals(key)) {
@@ -241,6 +261,7 @@ public class LinkedHierarchicalTree<K, V> implements HierarchicalTree<K, V> {
 			if (newChild.next != null) {
 				newChild.next.reparent(newChild);
 			}
+			size++;
 			return Optional.empty();
 		}
 		return putNext(key, value, node.child);
@@ -249,6 +270,7 @@ public class LinkedHierarchicalTree<K, V> implements HierarchicalTree<K, V> {
 	private Optional<V> putNext(final K key, final V value, final Node node) {
 		if (node.next == null) {
 			node.next = new Node(key, value);
+			size++;
 			return Optional.empty();
 		}
 		if (node.next.key.equals(key)) {
@@ -268,6 +290,7 @@ public class LinkedHierarchicalTree<K, V> implements HierarchicalTree<K, V> {
 			if (newNext.next != null) {
 				newNext.next.reparent(newNext);
 			}
+			size++;
 			return Optional.empty();
 		}
 		return putNext(key, value, node.next);
@@ -279,6 +302,7 @@ public class LinkedHierarchicalTree<K, V> implements HierarchicalTree<K, V> {
 		if (value == null) throw new IllegalArgumentException("Null value");
 		if (root == null) {
 			root = new Node(key, value);
+			size++;
 			return true;
 		}
 		if (root.key.equals(key)) {
@@ -296,6 +320,7 @@ public class LinkedHierarchicalTree<K, V> implements HierarchicalTree<K, V> {
 			if (root.next != null) {
 				root.next.reparent(root);
 			}
+			size++;
 			return true;
 		}
 		return putNextIfNotPresent(key, value, root);
@@ -304,6 +329,7 @@ public class LinkedHierarchicalTree<K, V> implements HierarchicalTree<K, V> {
 	private boolean putChildIfNotPresent(final K key, final V value, final Node node) {
 		if (node.child == null) {
 			node.child = new Node(key, value);
+			size++;
 			return true;
 		}
 		if (node.child.key.equals(key)) {
@@ -321,6 +347,7 @@ public class LinkedHierarchicalTree<K, V> implements HierarchicalTree<K, V> {
 			if (newChild.next != null) {
 				newChild.next.reparent(newChild);
 			}
+			size++;
 			return true;
 		}
 		return putNextIfNotPresent(key, value, node.child);
@@ -329,6 +356,7 @@ public class LinkedHierarchicalTree<K, V> implements HierarchicalTree<K, V> {
 	private boolean putNextIfNotPresent(final K key, final V value, final Node node) {
 		if (node.next == null) {
 			node.next = new Node(key, value);
+			size++;
 			return true;
 		}
 		if (node.next.key.equals(key)) {
@@ -346,6 +374,7 @@ public class LinkedHierarchicalTree<K, V> implements HierarchicalTree<K, V> {
 			if (newNext.next != null) {
 				newNext.next.reparent(newNext);
 			}
+			size++;
 			return true;
 		}
 		return putNextIfNotPresent(key, value, node.next);
@@ -367,6 +396,7 @@ public class LinkedHierarchicalTree<K, V> implements HierarchicalTree<K, V> {
 			} else {
 				root = root.child;
 			}
+			size--;
 			return Optional.of(removed);
 		}
 		if (isAncestorFunction.apply(root.key, key)) {
@@ -392,6 +422,7 @@ public class LinkedHierarchicalTree<K, V> implements HierarchicalTree<K, V> {
 			} else {
 				node.child = node.child.child;
 			}
+			size--;
 			return Optional.of(removed);
 		}
 		if (isAncestorFunction.apply(node.child.key, key)) {
@@ -417,6 +448,7 @@ public class LinkedHierarchicalTree<K, V> implements HierarchicalTree<K, V> {
 			} else {
 				node.next = node.next.child;
 			}
+			size--;
 			return Optional.of(removed);
 		}
 		if (isAncestorFunction.apply(node.next.key, key)) {
