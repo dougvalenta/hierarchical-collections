@@ -17,322 +17,968 @@ public class LinkedHierarchicalTreeTest {
 	
 	@Test
 	public void testEmptyTree() {
-		final HierarchicalTree<Class<?>, Object> tree = new LinkedHierarchicalTree<>(Class::isAssignableFrom);
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
 		Assert.assertEquals(0, tree.size());
 		Assert.assertTrue(tree.isEmpty());
-	}
-	
-	@Test
-	public void testGetFromEmptyTree() {
-		final HierarchicalTree<Class<?>, Object> tree = new LinkedHierarchicalTree<>(Class::isAssignableFrom);
-		verifyEmpty(tree.get(Object.class));
-	}
-	
-	@Test
-	public void testGetNearestFromEmptyTree() {
-		final HierarchicalTree<Class<?>, Object> tree = new LinkedHierarchicalTree<>(Class::isAssignableFrom);
-		verifyEmpty(tree.getNearest(Object.class));
-	}
-	
-	@Test
-	public void testRemoveFromEmptyTree() {
-		final HierarchicalTree<Class<?>, Object> tree = new LinkedHierarchicalTree<>(Class::isAssignableFrom);
-		verifyEmpty(tree.remove(Object.class));
-	}
-	
-	@Test
-	public void testIteratorFromEmptyTree() {
-		final HierarchicalTree<Class<?>, Object> tree = new LinkedHierarchicalTree<>(Class::isAssignableFrom);
-		final Iterator<HierarchicalTree.Node<Class<?>, Object>> iterator = tree.iterator();
+		Iterator<HierarchicalTree.Node<MockKey, Object>> iterator = tree.iterator();
 		Assert.assertNotNull(iterator);
 		Assert.assertFalse(iterator.hasNext());
+		verifyEmpty(tree.get(new MockKey()));
 	}
 	
-	@Test(expected=IllegalStateException.class)
-	public void testNextFromEmptyIterator() {
-		final HierarchicalTree<Class<?>, Object> tree = new LinkedHierarchicalTree<>(Class::isAssignableFrom);
-		final Iterator<HierarchicalTree.Node<Class<?>, Object>> iterator = tree.iterator();
-		iterator.next();
+	@Test(expected=IllegalArgumentException.class)
+	public void testPutWithNullKey() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		tree.put(null, new Object());
 	}
 	
-	@Test(expected=IllegalStateException.class)
-	public void testRemoveFromEmptyIterator() {
-		final HierarchicalTree<Class<?>, Object> tree = new LinkedHierarchicalTree<>(Class::isAssignableFrom);
-		final Iterator<HierarchicalTree.Node<Class<?>, Object>> iterator = tree.iterator();
-		iterator.remove();
+	@Test(expected=IllegalArgumentException.class)
+	public void testPutWithNullValue() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		tree.put(new MockKey(), null);
 	}
 	
 	@Test
-	public void testPutIfNotPresentToEmptyTree() {
-		final HierarchicalTree<Class<?>, Object> tree = new LinkedHierarchicalTree<>(Class::isAssignableFrom);
-		final boolean wasPut = tree.putIfNotPresent(Object.class, new Object());
-		Assert.assertTrue(wasPut);
+	public void testPutRoot() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key = new MockKey();
+		final Object value = new Object();
+		verifyEmpty(tree.put(key, value));
 		Assert.assertEquals(1, tree.size());
 		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key), key, value);
 	}
 	
 	@Test
-	public void testPutToEmptyTree() {
-		final HierarchicalTree<Class<?>, Object> tree = new LinkedHierarchicalTree<>(Class::isAssignableFrom);
-		verifyEmpty(tree.put(Object.class, new Object()));
+	public void testPutRootDirectReplace() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key = new MockKey();
+		final Object value1 = new Object();
+		final Object value2 = new Object();
+		tree.put(key, value1);
+		verifyPresent(tree.put(key, value2), value1);
 		Assert.assertEquals(1, tree.size());
 		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key), key, value2);
 	}
 	
 	@Test
-	public void testGetFromSingleNodeTree() {
-		final HierarchicalTree<Class<?>, Object> tree = new LinkedHierarchicalTree<>(Class::isAssignableFrom);
+	public void testPutChildOfRoot() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
 		final Object value1 = new Object();
-		tree.put(Object.class, value1);
-		HierarchicalTree.Node<Class<?>, Object> node = verifyOptionalNode(tree.get(Object.class), Object.class, value1);
+		final MockKey key2 = new MockKey(key1);
 		final Object value2 = new Object();
-		node.setValue(value2);
-		verifyOptionalNode(tree.get(Object.class), Object.class, value2);
+		tree.put(key1, value1);
+		verifyEmpty(tree.put(key2, value2));
+		Assert.assertEquals(2, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key2), key2, value2);
 	}
 	
 	@Test
-	public void testGetNearestFromSingleNodeTreeWithExact() {
-		final HierarchicalTree<Class<?>, Object> tree = new LinkedHierarchicalTree<>(Class::isAssignableFrom);
+	public void testPutChildOfRootDirectReplace() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
 		final Object value1 = new Object();
-		tree.put(Object.class, value1);
-		verifyOptionalNode(tree.getNearest(Object.class), Object.class, value1);
+		final MockKey key2 = new MockKey(key1);
+		final Object value2 = new Object();
+		final Object value3 = new Object();
+		tree.put(key1, value1);
+		tree.put(key2, value2);
+		verifyPresent(tree.put(key2, value3), value2);
+		Assert.assertEquals(2, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key2), key2, value3);
 	}
 	
 	@Test
-	public void testGetNearestFromSingleNodeTreeWithDescendant() {
-		final HierarchicalTree<Class<?>, Object> tree = new LinkedHierarchicalTree<>(Class::isAssignableFrom);
+	public void testPutChildOfChildOfRoot() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
 		final Object value1 = new Object();
-		tree.put(Object.class, value1);
-		verifyOptionalNode(tree.getNearest(String.class), Object.class, value1);
+		final MockKey key2 = new MockKey(key1);
+		final Object value2 = new Object();
+		final MockKey key3 = new MockKey(key2);
+		final Object value3 = new Object();
+		tree.put(key1, value1);
+		tree.put(key2, value2);
+		verifyEmpty(tree.put(key3, value3));
+		Assert.assertEquals(3, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key2), key2, value2);
+		verifyOptionalNode(tree.get(key3), key3, value3);
 	}
 	
 	@Test
-	public void testGetNearestFromSingleNodeTreeWithAncestor() {
-		final HierarchicalTree<Class<?>, Object> tree = new LinkedHierarchicalTree<>(Class::isAssignableFrom);
+	public void testPutParentOfChildOfRoot() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
 		final Object value1 = new Object();
-		tree.put(CharSequence.class, value1);
-		verifyEmpty(tree.getNearest(Object.class));
+		final MockKey key2 = new MockKey(key1);
+		final Object value2 = new Object();
+		final MockKey key3 = new MockKey(key2);
+		final Object value3 = new Object();
+		tree.put(key1, value1);
+		tree.put(key3, value3);
+		verifyEmpty(tree.put(key2, value2));
+		Assert.assertEquals(3, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key2), key2, value2);
+		verifyOptionalNode(tree.get(key3), key3, value3);
 	}
 	
 	@Test
-	public void testGetNearestFromSingleNodeTreeWithSibling() {
-		final HierarchicalTree<Class<?>, Object> tree = new LinkedHierarchicalTree<>(Class::isAssignableFrom);
+	public void testPutNextOfChildOfRoot() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
 		final Object value1 = new Object();
-		tree.put(CharSequence.class, value1);
-		verifyEmpty(tree.getNearest(Iterator.class));
+		final MockKey key2 = new MockKey(key1);
+		final Object value2 = new Object();
+		final MockKey key3 = new MockKey(key1);
+		final Object value3 = new Object();
+		tree.put(key1, value1);
+		tree.put(key2, value2);
+		verifyEmpty(tree.put(key3, value3));
+		Assert.assertEquals(3, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key2), key2, value2);
+		verifyOptionalNode(tree.get(key3), key3, value3);
 	}
 	
 	@Test
-	public void testRemoveFromSingleNodeTree() {
-		final HierarchicalTree<Class<?>, Object> tree = new LinkedHierarchicalTree<>(Class::isAssignableFrom);
+	public void testPutParentOfChildOfRootWithNext() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
 		final Object value1 = new Object();
-		tree.put(Object.class, value1);
-		verifyPresent(tree.remove(Object.class), value1);
+		final MockKey key2 = new MockKey(key1);
+		final Object value2 = new Object();
+		final MockKey key3 = new MockKey(key2);
+		final Object value3 = new Object();
+		final MockKey key4 = new MockKey(key2);
+		final Object value4 = new Object();
+		tree.put(key1, value1);
+		tree.put(key3, value3);
+		tree.put(key4, value4);
+		verifyEmpty(tree.put(key2, value2));
+		Assert.assertEquals(4, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key2), key2, value2);
+		verifyOptionalNode(tree.get(key3), key3, value3);
+		verifyOptionalNode(tree.get(key4), key4, value4);
+	}
+	
+	@Test
+	public void testPutParentOfRoot() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey(key1);
+		final Object value2 = new Object();
+		tree.put(key2, value2);
+		verifyEmpty(tree.put(key1, value1));
+		Assert.assertEquals(2, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key2), key2, value2);
+	}
+	
+	@Test
+	public void testPutNextOfRoot() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey();
+		final Object value2 = new Object();
+		tree.put(key1, value1);
+		verifyEmpty(tree.put(key2, value2));
+		Assert.assertEquals(2, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key2), key2, value2);
+	}
+	
+	@Test
+	public void testPutParentOfRootWithNext() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey(key1);
+		final Object value2 = new Object();
+		final MockKey key3 = new MockKey();
+		final Object value3 = new Object();
+		tree.put(key2, value2);
+		tree.put(key3, value3);
+		verifyEmpty(tree.put(key1, value1));
+		Assert.assertEquals(3, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key2), key2, value2);
+		verifyOptionalNode(tree.get(key3), key3, value3);
+	}
+	
+	@Test
+	public void testPutNextOfRootDirectReplace() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey();
+		final Object value2 = new Object();
+		final Object value3 = new Object();
+		tree.put(key1, value1);
+		tree.put(key2, value2);
+		verifyPresent(tree.put(key2, value3), value2);
+		Assert.assertEquals(2, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key2), key2, value3);
+	}
+	
+	@Test
+	public void testPutChildOfNextOfRoot() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey();
+		final Object value2 = new Object();
+		final MockKey key3 = new MockKey(key2);
+		final Object value3 = new Object();
+		tree.put(key1, value1);
+		tree.put(key2, value2);
+		verifyEmpty(tree.put(key3, value3));
+		Assert.assertEquals(3, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key2), key2, value2);
+		verifyOptionalNode(tree.get(key3), key3, value3);
+	}
+	
+	@Test
+	public void testPutParentOfNextOfRoot() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey();
+		final Object value2 = new Object();
+		final MockKey key3 = new MockKey(key2);
+		final Object value3 = new Object();
+		tree.put(key1, value1);
+		tree.put(key3, value3);
+		verifyEmpty(tree.put(key2, value2));
+		Assert.assertEquals(3, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key2), key2, value2);
+		verifyOptionalNode(tree.get(key3), key3, value3);
+	}
+	
+	@Test
+	public void testPutNextOfNextOfRoot() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey();
+		final Object value2 = new Object();
+		final MockKey key3 = new MockKey();
+		final Object value3 = new Object();
+		tree.put(key1, value1);
+		tree.put(key2, value2);
+		verifyEmpty(tree.put(key3, value3));
+		Assert.assertEquals(3, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key2), key2, value2);
+		verifyOptionalNode(tree.get(key3), key3, value3);
+	}
+	
+	@Test
+	public void testPutParentOfNextOfRootWithNext() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey();
+		final Object value2 = new Object();
+		final MockKey key3 = new MockKey();
+		final Object value3 = new Object();
+		final MockKey key4 = new MockKey(key2);
+		final Object value4 = new Object();
+		tree.put(key1, value1);
+		tree.put(key4, value4);
+		tree.put(key3, value3);
+		verifyEmpty(tree.put(key2, value2));
+		Assert.assertEquals(4, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key2), key2, value2);
+		verifyOptionalNode(tree.get(key3), key3, value3);
+		verifyOptionalNode(tree.get(key4), key4, value4);
+	}
+	
+	@Test(expected=IllegalArgumentException.class)
+	public void testPutIfNotPresentWithNullKey() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		tree.putIfNotPresent(null, new Object());
+	}
+	
+	@Test(expected=IllegalArgumentException.class)
+	public void testPutIfNotPresentWithNullValue() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		tree.putIfNotPresent(new MockKey(), null);
+	}
+	
+	@Test
+	public void testPutIfNotPresentRoot() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key = new MockKey();
+		final Object value = new Object();
+		Assert.assertTrue(tree.putIfNotPresent(key, value));
+		Assert.assertEquals(1, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key), key, value);
+	}
+	
+	@Test
+	public void testPutIfNotPresentRootDirectReplace() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key = new MockKey();
+		final Object value1 = new Object();
+		final Object value2 = new Object();
+		tree.put(key, value1);
+		Assert.assertFalse(tree.putIfNotPresent(key, value2));
+		Assert.assertEquals(1, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key), key, value1);
+	}
+	
+	@Test
+	public void testPutIfNotPresentChildOfRoot() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey(key1);
+		final Object value2 = new Object();
+		tree.put(key1, value1);
+		Assert.assertTrue(tree.putIfNotPresent(key2, value2));
+		Assert.assertEquals(2, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key2), key2, value2);
+	}
+	
+	@Test
+	public void testPutIfNotPresentChildOfRootDirectReplace() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey(key1);
+		final Object value2 = new Object();
+		final Object value3 = new Object();
+		tree.put(key1, value1);
+		tree.put(key2, value2);
+		Assert.assertFalse(tree.putIfNotPresent(key2, value3));
+		Assert.assertEquals(2, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key2), key2, value2);
+	}
+	
+	@Test
+	public void testPutIfNotPresentChildOfChildOfRoot() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey(key1);
+		final Object value2 = new Object();
+		final MockKey key3 = new MockKey(key2);
+		final Object value3 = new Object();
+		tree.put(key1, value1);
+		tree.put(key2, value2);
+		Assert.assertTrue(tree.putIfNotPresent(key3, value3));
+		Assert.assertEquals(3, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key2), key2, value2);
+		verifyOptionalNode(tree.get(key3), key3, value3);
+	}
+	
+	@Test
+	public void testPutIfNotPresentParentOfChildOfRoot() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey(key1);
+		final Object value2 = new Object();
+		final MockKey key3 = new MockKey(key2);
+		final Object value3 = new Object();
+		tree.put(key1, value1);
+		tree.put(key3, value3);
+		Assert.assertTrue(tree.putIfNotPresent(key2, value2));
+		Assert.assertEquals(3, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key2), key2, value2);
+		verifyOptionalNode(tree.get(key3), key3, value3);
+	}
+	
+	@Test
+	public void testPutIfNotPresentNextOfChildOfRoot() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey(key1);
+		final Object value2 = new Object();
+		final MockKey key3 = new MockKey(key1);
+		final Object value3 = new Object();
+		tree.put(key1, value1);
+		tree.put(key2, value2);
+		Assert.assertTrue(tree.putIfNotPresent(key3, value3));
+		Assert.assertEquals(3, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key2), key2, value2);
+		verifyOptionalNode(tree.get(key3), key3, value3);
+	}
+	
+	@Test
+	public void testPutIfNotPresentParentOfChildOfRootWithNext() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey(key1);
+		final Object value2 = new Object();
+		final MockKey key3 = new MockKey(key2);
+		final Object value3 = new Object();
+		final MockKey key4 = new MockKey(key2);
+		final Object value4 = new Object();
+		tree.put(key1, value1);
+		tree.put(key3, value3);
+		tree.put(key4, value4);
+		Assert.assertTrue(tree.putIfNotPresent(key2, value2));
+		Assert.assertEquals(4, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key2), key2, value2);
+		verifyOptionalNode(tree.get(key3), key3, value3);
+		verifyOptionalNode(tree.get(key4), key4, value4);
+	}
+	
+	@Test
+	public void testPutIfNotPresentParentOfRoot() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey(key1);
+		final Object value2 = new Object();
+		tree.put(key2, value2);
+		Assert.assertTrue(tree.putIfNotPresent(key1, value1));
+		Assert.assertEquals(2, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key2), key2, value2);
+	}
+	
+	@Test
+	public void testPutIfNotPresentNextOfRoot() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey();
+		final Object value2 = new Object();
+		tree.put(key1, value1);
+		Assert.assertTrue(tree.putIfNotPresent(key2, value2));
+		Assert.assertEquals(2, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key2), key2, value2);
+	}
+	
+	@Test
+	public void testPutIfNotPresentParentOfRootWithNext() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey(key1);
+		final Object value2 = new Object();
+		final MockKey key3 = new MockKey();
+		final Object value3 = new Object();
+		tree.put(key2, value2);
+		tree.put(key3, value3);
+		Assert.assertTrue(tree.putIfNotPresent(key1, value1));
+		Assert.assertEquals(3, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key2), key2, value2);
+		verifyOptionalNode(tree.get(key3), key3, value3);
+	}
+	
+	@Test
+	public void testPutIfNotPresentNextOfRootDirectReplace() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey();
+		final Object value2 = new Object();
+		final Object value3 = new Object();
+		tree.put(key1, value1);
+		tree.put(key2, value2);
+		Assert.assertFalse(tree.putIfNotPresent(key2, value3));
+		Assert.assertEquals(2, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key2), key2, value2);
+	}
+	
+	@Test
+	public void testPutIfNotPresentChildOfNextOfRoot() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey();
+		final Object value2 = new Object();
+		final MockKey key3 = new MockKey(key2);
+		final Object value3 = new Object();
+		tree.put(key1, value1);
+		tree.put(key2, value2);
+		Assert.assertTrue(tree.putIfNotPresent(key3, value3));
+		Assert.assertEquals(3, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key2), key2, value2);
+		verifyOptionalNode(tree.get(key3), key3, value3);
+	}
+	
+	@Test
+	public void testPutIfNotPresentParentOfNextOfRoot() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey();
+		final Object value2 = new Object();
+		final MockKey key3 = new MockKey(key2);
+		final Object value3 = new Object();
+		tree.put(key1, value1);
+		tree.put(key3, value3);
+		Assert.assertTrue(tree.putIfNotPresent(key2, value2));
+		Assert.assertEquals(3, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key2), key2, value2);
+		verifyOptionalNode(tree.get(key3), key3, value3);
+	}
+	
+	@Test
+	public void testPutIfNotPresentNextOfNextOfRoot() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey();
+		final Object value2 = new Object();
+		final MockKey key3 = new MockKey();
+		final Object value3 = new Object();
+		tree.put(key1, value1);
+		tree.put(key2, value2);
+		Assert.assertTrue(tree.putIfNotPresent(key3, value3));
+		Assert.assertEquals(3, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key2), key2, value2);
+		verifyOptionalNode(tree.get(key3), key3, value3);
+	}
+	
+	@Test
+	public void testPutIfNotPresentParentOfNextOfRootWithNext() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey();
+		final Object value2 = new Object();
+		final MockKey key3 = new MockKey();
+		final Object value3 = new Object();
+		final MockKey key4 = new MockKey(key2);
+		final Object value4 = new Object();
+		tree.put(key1, value1);
+		tree.put(key4, value4);
+		tree.put(key3, value3);
+		Assert.assertTrue(tree.putIfNotPresent(key2, value2));
+		Assert.assertEquals(4, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key2), key2, value2);
+		verifyOptionalNode(tree.get(key3), key3, value3);
+		verifyOptionalNode(tree.get(key4), key4, value4);
+	}
+	
+	@Test(expected=IllegalArgumentException.class)
+	public void testRemoveWithNullKey() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		tree.remove(null);
+	}
+	
+	@Test
+	public void testRemoveFromEmpty() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		tree.remove(new MockKey());
+	}
+	
+	@Test
+	public void testRemoveRoot() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key = new MockKey();
+		final Object value = new Object();
+		tree.put(key, value);
+		verifyPresent(tree.remove(key), value);
 		Assert.assertEquals(0, tree.size());
 		Assert.assertTrue(tree.isEmpty());
+		verifyEmpty(tree.get(key));
 	}
 	
 	@Test
-	public void testRemoveFromSingleNodeTreeWithNotPresentDescendant() {
-		final HierarchicalTree<Class<?>, Object> tree = new LinkedHierarchicalTree<>(Class::isAssignableFrom);
+	public void testRemoveRootWithNext() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
 		final Object value1 = new Object();
-		tree.put(CharSequence.class, value1);
-		verifyEmpty(tree.remove(String.class));
+		final MockKey key2 = new MockKey();
+		final Object value2 = new Object();
+		tree.put(key1, value1);
+		tree.put(key2, value2);
+		verifyPresent(tree.remove(key1), value1);
 		Assert.assertEquals(1, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyEmpty(tree.get(key1));
+		verifyOptionalNode(tree.get(key2), key2, value2);
 	}
 	
 	@Test
-	public void testRemoveFromSingleNodeTreeWithNotPresentSibling() {
-		final HierarchicalTree<Class<?>, Object> tree = new LinkedHierarchicalTree<>(Class::isAssignableFrom);
+	public void testRemoveRootWithChildAndNext() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
 		final Object value1 = new Object();
-		tree.put(CharSequence.class, value1);
-		verifyEmpty(tree.remove(Iterator.class));
+		final MockKey key2 = new MockKey();
+		final Object value2 = new Object();
+		final MockKey key3 = new MockKey(key1);
+		final Object value3 = new Object();
+		tree.put(key1, value1);
+		tree.put(key2, value2);
+		tree.put(key3, value3);
+		verifyPresent(tree.remove(key1), value1);
+		Assert.assertEquals(2, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyEmpty(tree.get(key1));
+		verifyOptionalNode(tree.get(key2), key2, value2);
+		verifyOptionalNode(tree.get(key3), key3, value3);
+	}
+	
+	@Test
+	public void testRemoveChildOfRoot() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey(key1);
+		final Object value2 = new Object();
+		tree.put(key1, value1);
+		tree.put(key2, value2);
+		verifyPresent(tree.remove(key2), value2);
 		Assert.assertEquals(1, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyEmpty(tree.get(key2));
 	}
 	
 	@Test
-	public void testRemoveFromSingleNodeTreeWithNotPresentAncestor() {
-		final HierarchicalTree<Class<?>, Object> tree = new LinkedHierarchicalTree<>(Class::isAssignableFrom);
+	public void testRemoveParentOfRoot() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
 		final Object value1 = new Object();
-		tree.put(CharSequence.class, value1);
-		verifyEmpty(tree.remove(Object.class));
+		final MockKey key2 = new MockKey(key1);
+		final Object value2 = new Object();
+		tree.put(key2, value2);
+		verifyEmpty(tree.remove(key1));
 		Assert.assertEquals(1, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyEmpty(tree.get(key1));
+		verifyOptionalNode(tree.get(key2), key2, value2);
 	}
 	
 	@Test
-	public void testPutToSingleNodeTreeWithAncestor() {
-		final HierarchicalTree<Class<?>, Object> tree = new LinkedHierarchicalTree<>(Class::isAssignableFrom);
+	public void testRemoveNextOfRoot() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
 		final Object value1 = new Object();
+		final MockKey key2 = new MockKey();
 		final Object value2 = new Object();
-		tree.put(String.class, value1);
-		verifyEmpty(tree.put(Object.class, value2));
-		Assert.assertEquals(2, tree.size());
-		verifyOptionalNode(tree.get(String.class), String.class, value1);
-		verifyOptionalNode(tree.get(Object.class), Object.class, value2);
-	}
-	
-	@Test
-	public void testPutToSingleNodeTreeWithDescendant() {
-		final HierarchicalTree<Class<?>, Object> tree = new LinkedHierarchicalTree<>(Class::isAssignableFrom);
-		final Object value1 = new Object();
-		final Object value2 = new Object();
-		tree.put(Object.class, value1);
-		verifyEmpty(tree.put(String.class, value2));
-		Assert.assertEquals(2, tree.size());
-		verifyOptionalNode(tree.get(Object.class), Object.class, value1);
-		verifyOptionalNode(tree.get(String.class), String.class, value2);
-	}
-	
-	@Test
-	public void testPutToSingleNodeTreeWithSibling() {
-		final HierarchicalTree<Class<?>, Object> tree = new LinkedHierarchicalTree<>(Class::isAssignableFrom);
-		final Object value1 = new Object();
-		final Object value2 = new Object();
-		tree.put(Iterator.class, value1);
-		verifyEmpty(tree.put(String.class, value2));
-		Assert.assertEquals(2, tree.size());
-		verifyOptionalNode(tree.get(Iterator.class), Iterator.class, value1);
-		verifyOptionalNode(tree.get(String.class), String.class, value2);
-	}
-	
-	@Test
-	public void testPutToSingleNodeTreeWithExact() {
-		final HierarchicalTree<Class<?>, Object> tree = new LinkedHierarchicalTree<>(Class::isAssignableFrom);
-		final Object value1 = new Object();
-		final Object value2 = new Object();
-		tree.put(Iterator.class, value1);
-		verifyPresent(tree.put(Iterator.class, value2), value1);
+		tree.put(key1, value1);
+		tree.put(key2, value2);
+		verifyPresent(tree.remove(key2), value2);
 		Assert.assertEquals(1, tree.size());
-		verifyOptionalNode(tree.get(Iterator.class), Iterator.class, value2);
+		Assert.assertFalse(tree.isEmpty());
+		verifyEmpty(tree.get(key2));
+		verifyOptionalNode(tree.get(key1), key1, value1);
 	}
 	
 	@Test
-	public void testPutIfNotPresentToSingleNodeTreeWithAncestor() {
-		final HierarchicalTree<Class<?>, Object> tree = new LinkedHierarchicalTree<>(Class::isAssignableFrom);
+	public void testRemoveChildWhenNotPresent() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
 		final Object value1 = new Object();
+		final MockKey key2 = new MockKey(key1);
 		final Object value2 = new Object();
-		tree.put(String.class, value1);
-		Assert.assertTrue(tree.putIfNotPresent(Object.class, value2));
-		Assert.assertEquals(2, tree.size());
-		verifyOptionalNode(tree.get(String.class), String.class, value1);
-		verifyOptionalNode(tree.get(Object.class), Object.class, value2);
-	}
-	
-	@Test
-	public void testPutIfNotPresentToSingleNodeTreeWithDescendant() {
-		final HierarchicalTree<Class<?>, Object> tree = new LinkedHierarchicalTree<>(Class::isAssignableFrom);
-		final Object value1 = new Object();
-		final Object value2 = new Object();
-		tree.put(Object.class, value1);
-		Assert.assertTrue(tree.putIfNotPresent(String.class, value2));
-		Assert.assertEquals(2, tree.size());
-		verifyOptionalNode(tree.get(Object.class), Object.class, value1);
-		verifyOptionalNode(tree.get(String.class), String.class, value2);
-	}
-	
-	@Test
-	public void testPutIfNotPresentToSingleNodeTreeWithSibling() {
-		final HierarchicalTree<Class<?>, Object> tree = new LinkedHierarchicalTree<>(Class::isAssignableFrom);
-		final Object value1 = new Object();
-		final Object value2 = new Object();
-		tree.put(Iterator.class, value1);
-		Assert.assertTrue(tree.putIfNotPresent(String.class, value2));
-		Assert.assertEquals(2, tree.size());
-		verifyOptionalNode(tree.get(Iterator.class), Iterator.class, value1);
-		verifyOptionalNode(tree.get(String.class), String.class, value2);
-	}
-	
-	@Test
-	public void testPutIfNotPresentToSingleNodeTreeWithExact() {
-		final HierarchicalTree<Class<?>, Object> tree = new LinkedHierarchicalTree<>(Class::isAssignableFrom);
-		final Object value1 = new Object();
-		final Object value2 = new Object();
-		tree.put(Iterator.class, value1);
-		Assert.assertFalse(tree.putIfNotPresent(Iterator.class, value2));
+		tree.put(key1, value1);
+		verifyEmpty(tree.remove(key2));
 		Assert.assertEquals(1, tree.size());
-		verifyOptionalNode(tree.get(Iterator.class), Iterator.class, value1);
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyEmpty(tree.get(key2));
 	}
 	
 	@Test
-	public void testIteratorFromSingleNodeTree() {
-		final HierarchicalTree<Class<?>, Object> tree = new LinkedHierarchicalTree<>(Class::isAssignableFrom);
+	public void testRemoveChildWithNext() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
 		final Object value1 = new Object();
-		tree.put(Object.class, value1);
-		final Iterator<HierarchicalTree.Node<Class<?>, Object>> iterator = tree.iterator();
-		Assert.assertNotNull(iterator);
-		Assert.assertTrue(iterator.hasNext());
-		final HierarchicalTree.Node<Class<?>, Object> node = iterator.next();
-		Assert.assertNotNull(node);
-		Assert.assertEquals(Object.class, node.getKey());
-		Assert.assertEquals(value1, node.getValue());
-		Assert.assertFalse(iterator.hasNext());
-	}
-	
-	@Test(expected=IllegalStateException.class)
-	public void testIteratorFromSingleNodeTreeWhenExhausted() {
-		final HierarchicalTree<Class<?>, Object> tree = new LinkedHierarchicalTree<>(Class::isAssignableFrom);
-		final Object value1 = new Object();
-		tree.put(Object.class, value1);
-		final Iterator<HierarchicalTree.Node<Class<?>, Object>> iterator = tree.iterator();
-		Assert.assertNotNull(iterator);
-		Assert.assertTrue(iterator.hasNext());
-		Assert.assertNotNull(iterator.next());
-		Assert.assertFalse(iterator.hasNext());
-		iterator.next();
-	}
-	
-	@Test(expected=IllegalStateException.class)
-	public void testRemoveFromIteratorFromSingleNodeTreeWhenNotIterated() {
-		final HierarchicalTree<Class<?>, Object> tree = new LinkedHierarchicalTree<>(Class::isAssignableFrom);
-		final Object value1 = new Object();
-		tree.put(Object.class, value1);
-		final Iterator<HierarchicalTree.Node<Class<?>, Object>> iterator = tree.iterator();
-		Assert.assertNotNull(iterator);
-		iterator.remove();
+		final MockKey key2 = new MockKey(key1);
+		final Object value2 = new Object();
+		final MockKey key3 = new MockKey(key1);
+		final Object value3 = new Object();
+		tree.put(key1, value1);
+		tree.put(key2, value2);
+		tree.put(key3, value3);
+		verifyPresent(tree.remove(key2), value2);
+		Assert.assertEquals(2, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyEmpty(tree.get(key2));
+		verifyOptionalNode(tree.get(key3), key3, value3);
 	}
 	
 	@Test
-	public void testRemoveFromIteratorFromSingleNodeTree() {
-		final HierarchicalTree<Class<?>, Object> tree = new LinkedHierarchicalTree<>(Class::isAssignableFrom);
+	public void testRemoveChildWithNextAndChild() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
 		final Object value1 = new Object();
-		tree.put(Object.class, value1);
-		final Iterator<HierarchicalTree.Node<Class<?>, Object>> iterator = tree.iterator();
-		Assert.assertNotNull(iterator);
-		Assert.assertTrue(iterator.hasNext());
-		Assert.assertNotNull(iterator.next());
-		Assert.assertFalse(iterator.hasNext());
-		iterator.remove();
+		final MockKey key2 = new MockKey(key1);
+		final Object value2 = new Object();
+		final MockKey key3 = new MockKey(key1);
+		final Object value3 = new Object();
+		final MockKey key4 = new MockKey(key2);
+		final Object value4 = new Object();
+		tree.put(key1, value1);
+		tree.put(key2, value2);
+		tree.put(key3, value3);
+		tree.put(key4, value4);
+		verifyPresent(tree.remove(key2), value2);
+		Assert.assertEquals(3, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyEmpty(tree.get(key2));
+		verifyOptionalNode(tree.get(key3), key3, value3);
+		verifyOptionalNode(tree.get(key4), key4, value4);
+	}
+	
+	@Test
+	public void testRemoveChildOfChild() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey(key1);
+		final Object value2 = new Object();
+		final MockKey key3 = new MockKey(key2);
+		final Object value3 = new Object();
+		tree.put(key1, value1);
+		tree.put(key2, value2);
+		tree.put(key3, value3);
+		verifyPresent(tree.remove(key3), value3);
+		Assert.assertEquals(2, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key2), key2, value2);
+		verifyEmpty(tree.get(key3));
+	}
+	
+	@Test
+	public void testRemoveParentOfChildWhenNotPresent() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey(key1);
+		final MockKey key3 = new MockKey(key2);
+		final Object value3 = new Object();
+		tree.put(key1, value1);
+		tree.put(key3, value3);
+		verifyEmpty(tree.remove(key2));
+		Assert.assertEquals(2, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key3), key3, value3);
+		verifyEmpty(tree.get(key2));
+	}
+	
+	@Test
+	public void testRemoveNextOfChild() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey(key1);
+		final Object value2 = new Object();
+		final MockKey key3 = new MockKey(key1);
+		final Object value3 = new Object();
+		tree.put(key1, value1);
+		tree.put(key2, value2);
+		tree.put(key3, value3);
+		verifyPresent(tree.remove(key3), value3);
+		Assert.assertEquals(2, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key2), key2, value2);
+		verifyEmpty(tree.get(key3));
+	}
+	
+	@Test
+	public void testRemoveNextNotPresent() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey();
+		tree.put(key1, value1);
+		verifyEmpty(tree.remove(key2));
+		Assert.assertEquals(1, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyEmpty(tree.get(key2));
+	}
+	
+	@Test
+	public void testRemoveNextWithNext() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey();
+		final Object value2 = new Object();
+		final MockKey key3 = new MockKey();
+		final Object value3 = new Object();
+		tree.put(key1, value1);
+		tree.put(key2, value2);
+		tree.put(key3, value3);
+		verifyPresent(tree.remove(key2), value2);
+		Assert.assertEquals(2, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key3), key3, value3);
+		verifyEmpty(tree.get(key2));
+	}
+	
+	@Test
+	public void testRemoveNextWithNextAndChild() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey();
+		final Object value2 = new Object();
+		final MockKey key3 = new MockKey();
+		final Object value3 = new Object();
+		final MockKey key4 = new MockKey(key2);
+		final Object value4 = new Object();
+		tree.put(key1, value1);
+		tree.put(key2, value2);
+		tree.put(key3, value3);
+		tree.put(key4, value4);
+		verifyPresent(tree.remove(key2), value2);
+		Assert.assertEquals(3, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key3), key3, value3);
+		verifyOptionalNode(tree.get(key4), key4, value4);
+		verifyEmpty(tree.get(key2));
+	}
+	
+	@Test
+	public void testRemoveChildOfNext() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey();
+		final Object value2 = new Object();
+		final MockKey key3 = new MockKey(key2);
+		final Object value3 = new Object();
+		tree.put(key1, value1);
+		tree.put(key2, value2);
+		tree.put(key3, value3);
+		verifyPresent(tree.remove(key3), value3);
+		Assert.assertEquals(2, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key2), key2, value2);
+		verifyEmpty(tree.get(key3));
+	}
+	
+	@Test
+	public void testRemoveParentOfNextWhenNotPresent() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey();
+		final Object value2 = new Object();
+		final MockKey key3 = new MockKey(key2);
+		final Object value3 = new Object();
+		tree.put(key1, value1);
+		tree.put(key3, value3);
+		verifyEmpty(tree.remove(key2));
+		Assert.assertEquals(2, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key3), key3, value3);
+		verifyEmpty(tree.get(key2));
+	}
+	
+	@Test
+	public void testRemoveNextOfNext() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey();
+		final Object value2 = new Object();
+		final MockKey key3 = new MockKey();
+		final Object value3 = new Object();
+		tree.put(key1, value1);
+		tree.put(key2, value2);
+		tree.put(key3, value3);
+		verifyPresent(tree.remove(key3), value3);
+		Assert.assertEquals(2, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key2), key2, value2);
+		verifyEmpty(tree.get(key3));
+	}
+	
+	@Test(expected=IllegalArgumentException.class)
+	public void testGetWithNullKey() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		tree.get(null);
+	}
+	
+	@Test
+	public void testGetNotPresentParent() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final MockKey key2 = new MockKey(key1);
+		tree.put(key2, new Object());
+		verifyEmpty(tree.get(key1));
+	}
+	
+	@Test
+	public void testClear() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		tree.put(key1, new Object());
+		tree.clear();
 		Assert.assertEquals(0, tree.size());
 		Assert.assertTrue(tree.isEmpty());
-		Assert.assertFalse(iterator.hasNext());
-	}
-	
-	@Test(expected=IllegalStateException.class)
-	public void testNextAfterRemoveFromIteratorFromSingleNodeTree() {
-		final HierarchicalTree<Class<?>, Object> tree = new LinkedHierarchicalTree<>(Class::isAssignableFrom);
-		final Object value1 = new Object();
-		tree.put(Object.class, value1);
-		final Iterator<HierarchicalTree.Node<Class<?>, Object>> iterator = tree.iterator();
-		Assert.assertNotNull(iterator);
-		Assert.assertTrue(iterator.hasNext());
-		Assert.assertNotNull(iterator.next());
-		Assert.assertFalse(iterator.hasNext());
-		iterator.remove();
-		iterator.next();
-	}
-	
-	@Test(expected=IllegalStateException.class)
-	public void testRemoveAfterRemoveFromIteratorFromSingleNodeTree() {
-		final HierarchicalTree<Class<?>, Object> tree = new LinkedHierarchicalTree<>(Class::isAssignableFrom);
-		final Object value1 = new Object();
-		tree.put(Object.class, value1);
-		final Iterator<HierarchicalTree.Node<Class<?>, Object>> iterator = tree.iterator();
-		Assert.assertNotNull(iterator);
-		Assert.assertTrue(iterator.hasNext());
-		Assert.assertNotNull(iterator.next());
-		Assert.assertFalse(iterator.hasNext());
-		iterator.remove();
-		iterator.remove();
+		verifyEmpty(tree.get(key1));
 	}
 	
 	private static <K, V> HierarchicalTree.Node<K, V> verifyOptionalNode(Optional<HierarchicalTree.Node<K, V>> optionalNode, K expectedKey, V expectedValue) {

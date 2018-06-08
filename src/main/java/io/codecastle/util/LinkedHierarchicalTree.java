@@ -431,7 +431,7 @@ public class LinkedHierarchicalTree<K, V> implements HierarchicalTree<K, V> {
 		if (isAncestorFunction.apply(key, node.child.key)) {
 			return Optional.empty();
 		}
-		return removeNext(key, root);
+		return removeNext(key, node.child);
 	}
 	
 	private Optional<V> removeNext(final K key, final Node node) {
