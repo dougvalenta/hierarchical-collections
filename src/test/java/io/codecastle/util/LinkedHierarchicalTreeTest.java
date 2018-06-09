@@ -961,13 +961,84 @@ public class LinkedHierarchicalTreeTest {
 		tree.get(null);
 	}
 	
+	@Test(expected=IllegalArgumentException.class)
+	public void testGetNearestWithNullKey() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		tree.getNearest(null);
+	}
+	
 	@Test
-	public void testGetNotPresentParent() {
+	public void testGetNearestWithEmpty() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		verifyEmpty(tree.getNearest(new MockKey()));
+	}
+	
+	@Test
+	public void testGetNearestWithExact() {
 		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
 		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		tree.put(key1, value1);
+		verifyOptionalNode(tree.getNearest(key1), key1, value1);
+	}
+	
+	@Test
+	public void testGetNearestWithExactChild() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
 		final MockKey key2 = new MockKey(key1);
-		tree.put(key2, new Object());
-		verifyEmpty(tree.get(key1));
+		final Object value2 = new Object();
+		tree.put(key1, value1);
+		tree.put(key2, value2);
+		verifyOptionalNode(tree.getNearest(key2), key2, value2);
+	}
+	
+	@Test
+	public void testGetNearestWithNotPresentChild() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey(key1);
+		final Object value2 = new Object();
+		tree.put(key1, value1);
+		verifyOptionalNode(tree.getNearest(key2), key1, value1);
+	}
+	
+	@Test
+	public void testGetNearestWithOtherChild() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey(key1);
+		final Object value2 = new Object();
+		tree.put(key1, value1);
+		tree.put(key2, value2);
+		verifyOptionalNode(tree.getNearest(new MockKey(key1)), key1, value1);
+	}
+	
+	@Test
+	public void testGetNearestWithParentOfRoot() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey(key1);
+		final Object value2 = new Object();
+		tree.put(key2, value2);
+		verifyEmpty(tree.getNearest(new MockKey(key1)));
+	}
+	
+	@Test
+	public void testGetNearestWithParentOfChild() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey(key1);
+		final MockKey key3 = new MockKey(key2);
+		final Object value3 = new Object();
+		tree.put(key1, value1);
+		tree.put(key3, value3);
+		verifyOptionalNode(tree.getNearest(key2), key1, value1);
 	}
 	
 	@Test
