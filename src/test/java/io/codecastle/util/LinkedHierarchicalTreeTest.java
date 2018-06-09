@@ -4,6 +4,7 @@
  */
 package io.codecastle.util;
 
+import java.util.AbstractMap;
 import java.util.Iterator;
 import java.util.Optional;
 import org.junit.Assert;
@@ -1039,6 +1040,151 @@ public class LinkedHierarchicalTreeTest {
 		tree.put(key1, value1);
 		tree.put(key3, value3);
 		verifyOptionalNode(tree.getNearest(key2), key1, value1);
+	}
+	
+	@Test
+	public void testPutParentOfMultiple() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final Object value1 = new Object();
+		final MockKey key2 = new MockKey(key1);
+		final Object value2 = new Object();
+		final MockKey key3 = new MockKey(key2);
+		final Object value3 = new Object();
+		final MockKey key4 = new MockKey(key2);
+		final Object value4 = new Object();
+		final MockKey key5 = new MockKey(key2);
+		final Object value5 = new Object();
+		tree.put(key1, value1);
+		tree.put(key3, value3);
+		tree.put(key4, value4);
+		tree.put(key5, value5);
+		verifyEmpty(tree.put(key2, value2));
+		Assert.assertEquals(5, tree.size());
+		Assert.assertFalse(tree.isEmpty());
+		verifyOptionalNode(tree.get(key1), key1, value1);
+		verifyOptionalNode(tree.get(key2), key2, value2);
+		verifyOptionalNode(tree.get(key3), key3, value3);
+		verifyOptionalNode(tree.get(key4), key4, value4);
+		verifyOptionalNode(tree.get(key5), key5, value5);
+	}
+	
+	@Test
+	public void testSetNodeValue() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key = new MockKey();
+		final Object value1 = new Object();
+		final Object value2 = new Object();
+		tree.put(key, value1);
+		HierarchicalTree.Node<MockKey, Object> node1 = verifyOptionalNode(tree.get(key), key, value1);
+		Assert.assertEquals(value1, node1.setValue(value2));
+		HierarchicalTree.Node<MockKey, Object> node2 = verifyOptionalNode(tree.get(key), key, value2);
+	}
+	
+	@Test(expected=IllegalArgumentException.class)
+	public void testSetNodeValueWithNullValue() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key = new MockKey();
+		tree.put(key, new Object());
+		HierarchicalTree.Node<MockKey, Object> node1 = tree.get(key).get();
+		node1.setValue(null);
+	}
+	
+	@Test
+	public void testNodeEqualsWithNonMapEntry() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key = new MockKey();
+		tree.put(key, new Object());
+		HierarchicalTree.Node<MockKey, Object> node1 = tree.get(key).get();
+		Assert.assertFalse(node1.equals(new Object()));
+	}
+	
+	@Test
+	public void testNodeEqualsWithNull() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key = new MockKey();
+		tree.put(key, new Object());
+		HierarchicalTree.Node<MockKey, Object> node1 = tree.get(key).get();
+		Assert.assertFalse(node1.equals(null));
+	}
+	
+	@Test
+	public void testNodeEqualsWithMapEntry() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key = new MockKey();
+		final Object value = new Object();
+		tree.put(key, value);
+		HierarchicalTree.Node<MockKey, Object> node1 = tree.get(key).get();
+		Assert.assertTrue(node1.equals(new AbstractMap.SimpleEntry<>(key, value)));
+	}
+	
+	@Test
+	public void testNodeEqualsWithMapEntryWithWrongKey() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key = new MockKey();
+		final Object value = new Object();
+		tree.put(key, value);
+		HierarchicalTree.Node<MockKey, Object> node1 = tree.get(key).get();
+		Assert.assertFalse(node1.equals(new AbstractMap.SimpleEntry<>(new MockKey(), value)));
+	}
+	
+	@Test
+	public void testNodeEqualsWithMapEntryWithWrongValue() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key = new MockKey();
+		final Object value = new Object();
+		tree.put(key, value);
+		HierarchicalTree.Node<MockKey, Object> node1 = tree.get(key).get();
+		Assert.assertFalse(node1.equals(new AbstractMap.SimpleEntry<>(key, new Object())));
+	}
+	
+	@Test
+	public void testHashCodeWhenEqual() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key = new MockKey();
+		final Object value = new Object();
+		tree.put(key, value);
+		HierarchicalTree.Node<MockKey, Object> node1 = tree.get(key).get();
+		tree.remove(key);
+		tree.put(key, value);
+		HierarchicalTree.Node<MockKey, Object> node2 = tree.get(key).get();
+		Assert.assertFalse(node1 == node2);
+		Assert.assertTrue(node1.equals(node2));
+		Assert.assertTrue(node2.equals(node1));
+		Assert.assertEquals(node1.hashCode(), node2.hashCode());
+	}
+	
+	@Test
+	public void testHashCodeWhenDifferentKey() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key1 = new MockKey();
+		final MockKey key2 = new MockKey();
+		final Object value = new Object();
+		tree.put(key1, value);
+		HierarchicalTree.Node<MockKey, Object> node1 = tree.get(key1).get();
+		tree.put(key2, value);
+		HierarchicalTree.Node<MockKey, Object> node2 = tree.get(key2).get();
+		Assert.assertFalse(node1 == node2);
+		Assert.assertFalse(node1.equals(node2));
+		Assert.assertFalse(node2.equals(node1));
+		Assert.assertNotEquals(node1.hashCode(), node2.hashCode());
+	}
+	
+	@Test
+	public void testHashCodeWhenDifferentValue() {
+		HierarchicalTree<MockKey, Object> tree = new LinkedHierarchicalTree<>(MockKey::isParentOf);
+		final MockKey key = new MockKey();
+		final Object value1 = new Object();
+		final Object value2 = new Object();
+		tree.put(key, value1);
+		HierarchicalTree.Node<MockKey, Object> node1 = tree.get(key).get();
+		tree.remove(key);
+		tree.put(key, value2);
+		HierarchicalTree.Node<MockKey, Object> node2 = tree.get(key).get();
+		Assert.assertFalse(node1 == node2);
+		Assert.assertFalse(node1.equals(node2));
+		Assert.assertFalse(node2.equals(node1));
+		Assert.assertNotEquals(node1.hashCode(), node2.hashCode());
 	}
 	
 	@Test

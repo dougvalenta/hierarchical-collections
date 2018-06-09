@@ -40,12 +40,13 @@ public class LinkedHierarchicalTree<K, V> implements HierarchicalTree<K, V> {
 		void reparent(Node parent) {
 			if (isAncestorFunction.apply(parent.key, key)) {
 				if (next != null) {
-					next.next(parent.next);
-					parent.next = next;
 					next.reparent(parent);
 				}
 				next = parent.child;
 				parent.child = this;
+			} else {
+				next(parent.next);
+				parent.next = this;
 			}
 		}
 
@@ -69,6 +70,7 @@ public class LinkedHierarchicalTree<K, V> implements HierarchicalTree<K, V> {
 		
 		@Override
 		public boolean equals(final Object other) {
+			if (other == null) return false;
 			if (!(other instanceof Map.Entry)) {
 				return false;
 			}
